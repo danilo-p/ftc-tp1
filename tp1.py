@@ -57,21 +57,19 @@ class Transition:
     return self.human_readable()
 
 class AfnLambda:
-  def __init__(self, states, alphabet, initial_states, final_states, transitions):
+  def __init__(self, states, alphabet, transitions):
     self.states = states
     self.alphabet = alphabet
-    self.initial_states = initial_states
-    self.final_states = final_states
     self.transitions = []
 
   def add_state(self, s):
     self.states.append(s)
 
-  def set_initial_states(self, initial_states):
-    self.initial_states = initial_states
+  def get_initial_states(self):
+    return [s for s in self.states if s.initial]
 
-  def set_final_states(self, final_states):
-    self.final_states = final_states
+  def get_final_states(self):
+    return [s for s in self.states if s.final]
 
   def add_transition(self, t):
     self.transitions.append(t)
@@ -80,8 +78,6 @@ class Der:
   def __init__(self, afn_lambda):
     self.states = afn_lambda.states.copy()
     self.alphabet = afn_lambda.alphabet.copy()
-    self.initial_states = afn_lambda.initial_states.copy()
-    self.final_states = afn_lambda.final_states.copy()
     self.transitions = []
     self.transform_afn_lambda_transitions(afn_lambda.transitions)
 
@@ -100,8 +96,6 @@ class RegExp:
   def __init__(self, der):
     self.states = der.states.copy()
     self.alphabet = der.alphabet.copy()
-    self.initial_states = der.initial_states.copy()
-    self.final_states = der.final_states.copy()
     self.transitions = der.transitions.copy()
   
   def remove_transition_if_exists(self, t):
@@ -204,11 +198,21 @@ input_data = open(input_file).read()
 input_data = input_data.split(LINE_BREAK)
 input_data = [i.split(DELIMITER) for i in input_data]
 
+states = [State(s) for s in input_data[0].copy()]
+
+for initial_state_name in input_data[2].copy():
+  for s in states:
+    if s == State(initial_state_name):
+      s.set_initial(True)
+
+for final_state_name in input_data[3].copy():
+  for s in states:
+    if s == State(final_state_name):
+      s.set_final(True)
+
 m = AfnLambda(
-  [State(s) for s in input_data[0].copy()],
+  states,
   input_data[1].copy(),
-  [State(s) for s in input_data[2].copy()],
-  [State(s) for s in input_data[3].copy()],
   []
 )
 
@@ -219,15 +223,17 @@ for t in input_data[4:]:
   for dest in dests:
     m.add_transition(Transition(State(src), symb, State(dest)))
 
-m.add_state(State(INITIAL_STATE))
-for i in m.initial_states:
-  m.add_transition(Transition(State(INITIAL_STATE), LAMBDA_TRANSITION, i))
-m.set_initial_states([State(INITIAL_STATE)])
+new_initial_state = State(INITIAL_STATE, initial=True)
+for i in m.get_initial_states():
+  m.add_transition(Transition(new_initial_state, LAMBDA_TRANSITION, i))
+  i.set_initial(False)
+m.add_state(new_initial_state)
 
-m.add_state(State(FINAL_STATE))
-for f in m.final_states:
-  m.add_transition(Transition(f, LAMBDA_TRANSITION, State(FINAL_STATE)))
-m.set_final_states([State(FINAL_STATE)])
+new_final_state = State(FINAL_STATE, final=True)
+for f in m.get_final_states():
+  m.add_transition(Transition(f, LAMBDA_TRANSITION, new_final_state))
+  i.set_final(False)
+m.add_state(new_final_state)
 
 d = Der(m)
 r = RegExp(d)
