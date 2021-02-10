@@ -51,30 +51,6 @@ class AfnLambda:
   def add_transition(self, src, symb, dest):
     self.transitions.append(Transition(src, symb, dest))
 
-m = AfnLambda(
-  input_data[0].copy(),
-  input_data[1].copy(),
-  input_data[2].copy(),
-  input_data[3].copy(),
-  []
-)
-for t in input_data[4:]:
-  src = t[0]
-  symb = t[1]
-  dests = t[2:]
-  for dest in dests:
-    m.add_transition(src, symb, dest)
-
-m.add_state(INITIAL_STATE)
-for i in m.initial_states:
-  m.add_transition(INITIAL_STATE, LAMBDA_TRANSITION, i)
-m.set_initial_states([INITIAL_STATE])
-
-m.add_state(FINAL_STATE)
-for f in m.final_states:
-  m.add_transition(f, LAMBDA_TRANSITION, FINAL_STATE)
-m.set_final_states([FINAL_STATE])
-
 class Der:
   def __init__(self, afn_lambda):
     self.states = afn_lambda.states.copy()
@@ -94,8 +70,6 @@ class Der:
           if len(dest_transitions_symb) > 1:
             r = f'({r})'
           self.transitions.append(Transition(src, r, dest))
-
-d = Der(m)
 
 class RegExp:
   def __init__(self, der):
@@ -195,7 +169,32 @@ class RegExp:
   def __str__(self):
     return self.transitions[0].symb
 
+m = AfnLambda(
+  input_data[0].copy(),
+  input_data[1].copy(),
+  input_data[2].copy(),
+  input_data[3].copy(),
+  []
+)
 
+for t in input_data[4:]:
+  src = t[0]
+  symb = t[1]
+  dests = t[2:]
+  for dest in dests:
+    m.add_transition(src, symb, dest)
+
+m.add_state(INITIAL_STATE)
+for i in m.initial_states:
+  m.add_transition(INITIAL_STATE, LAMBDA_TRANSITION, i)
+m.set_initial_states([INITIAL_STATE])
+
+m.add_state(FINAL_STATE)
+for f in m.final_states:
+  m.add_transition(f, LAMBDA_TRANSITION, FINAL_STATE)
+m.set_final_states([FINAL_STATE])
+
+d = Der(m)
 r = RegExp(d)
 r.build()
 print(r)
