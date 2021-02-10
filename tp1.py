@@ -1,13 +1,11 @@
 import sys
+import uuid
 
 DELIMITER = ','
 LINE_BREAK = '\n'
-INITIAL_STATE = "__INITIAL__"
-FINAL_STATE = "__FINAL__"
-LAMBDA_TRANSITION = ''
 
 class State:
-  def __init__(self, name, initial = False, final = False):
+  def __init__(self, name = "", initial = False, final = False):
     self.name = name
     self.initial = initial
     self.final = final
@@ -32,9 +30,6 @@ class State:
 
     return f'State({self.name}, {flags})'
 
-  def __eq__(self, obj):
-    return self.name == obj.name
-
   def __str__(self):
     return self.human_readable()
 
@@ -42,6 +37,8 @@ class State:
     return self.human_readable()
 
 class Transition:
+  LAMBDA = ''
+
   def __init__(self, src, symb, dest):
     self.src = src
     self.symb = symb
@@ -59,7 +56,13 @@ class Transition:
 class AfnLambda:
   def __init__(self, states, transitions):
     self.states = states
-    self.transitions = []
+    self.transitions = transitions
+
+  def get_state_by_name(self, name):
+    for s in self.states:
+      if s.name == name:
+        return s
+    return None
 
   def add_state(self, s):
     self.states.append(s)
@@ -75,6 +78,18 @@ class AfnLambda:
 
 class Der:
   def __init__(self, afn_lambda):
+    self.new_initial_state = State(initial=True)
+    for i in afn_lambda.get_initial_states():
+      afn_lambda.add_transition(Transition(self.new_initial_state, Transition.LAMBDA, i))
+      i.set_initial(False)
+    afn_lambda.add_state(self.new_initial_state)
+
+    self.new_final_state = State(final=True)
+    for f in afn_lambda.get_final_states():
+      afn_lambda.add_transition(Transition(f, Transition.LAMBDA, self.new_final_state))
+      i.set_final(False)
+    afn_lambda.add_state(self.new_final_state)
+
     self.states = afn_lambda.states.copy()
     self.transitions = []
     self.transform_afn_lambda_transitions(afn_lambda.transitions)
@@ -92,6 +107,7 @@ class Der:
 
 class RegExp:
   def __init__(self, der):
+    self.der = der
     self.states = der.states.copy()
     self.transitions = der.transitions.copy()
   
@@ -100,7 +116,7 @@ class RegExp:
       self.transitions.remove(t)
 
   def remaining_transitions(self):
-    return [t for t in self.transitions if not (t.src == State(INITIAL_STATE) and t.dest == State(FINAL_STATE))]
+    return [t for t in self.transitions if not (t.src == self.der.new_initial_state and t.dest == self.der.new_final_state)]
 
   def first_removable_transitions(self):
     remaining = self.remaining_transitions()
@@ -185,50 +201,40 @@ class RegExp:
   def __str__(self):
     return self.transitions[0].symb
 
-if len(sys.argv) != 2:
-  print("Usage: ./tp1 <input file>")
-  sys.exit()
+def main():
+  if len(sys.argv) != 2:
+    print("Wrong number of arguments: Pass the input file name as first argument when executing from the command line.")
+    return
 
-input_file = sys.argv[1]
+  input_file = sys.argv[1]
 
-input_data = open(input_file).read()
-input_data = input_data.split(LINE_BREAK)
-input_data = [i.split(DELIMITER) for i in input_data]
+  input_data = open(input_file).read()
+  input_data = input_data.split(LINE_BREAK)
+  input_data = [i.split(DELIMITER) for i in input_data]
 
-states = [State(s) for s in input_data[0].copy()]
+  states = [State(s) for s in input_data[0].copy()]
 
-for initial_state_name in input_data[2].copy():
-  for s in states:
-    if s == State(initial_state_name):
-      s.set_initial(True)
+  m = AfnLambda(states, [])
 
-for final_state_name in input_data[3].copy():
-  for s in states:
-    if s == State(final_state_name):
-      s.set_final(True)
+  for initial_state_name in input_data[2].copy():
+    s = m.get_state_by_name(initial_state_name)
+    s.set_initial(True)
 
-m = AfnLambda(states, [])
+  for final_state_name in input_data[3].copy():
+    s = m.get_state_by_name(final_state_name)
+    s.set_final(True)
 
-for t in input_data[4:]:
-  src = t[0]
-  symb = t[1]
-  dests = t[2:]
-  for dest in dests:
-    m.add_transition(Transition(State(src), symb, State(dest)))
+  for t in input_data[4:]:
+    src = t[0]
+    symb = t[1]
+    dests = t[2:]
+    for dest in dests:
+      m.add_transition(Transition(m.get_state_by_name(src), symb, m.get_state_by_name(dest)))
 
-new_initial_state = State(INITIAL_STATE, initial=True)
-for i in m.get_initial_states():
-  m.add_transition(Transition(new_initial_state, LAMBDA_TRANSITION, i))
-  i.set_initial(False)
-m.add_state(new_initial_state)
+  d = Der(m)
+  r = RegExp(d)
+  r.build()
+  print(r)
 
-new_final_state = State(FINAL_STATE, final=True)
-for f in m.get_final_states():
-  m.add_transition(Transition(f, LAMBDA_TRANSITION, new_final_state))
-  i.set_final(False)
-m.add_state(new_final_state)
-
-d = Der(m)
-r = RegExp(d)
-r.build()
-print(r)
+if __name__ == "__main__":
+  main()
