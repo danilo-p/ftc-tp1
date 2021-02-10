@@ -57,9 +57,8 @@ class Transition:
     return self.human_readable()
 
 class AfnLambda:
-  def __init__(self, states, alphabet, transitions):
+  def __init__(self, states, transitions):
     self.states = states
-    self.alphabet = alphabet
     self.transitions = []
 
   def add_state(self, s):
@@ -77,7 +76,6 @@ class AfnLambda:
 class Der:
   def __init__(self, afn_lambda):
     self.states = afn_lambda.states.copy()
-    self.alphabet = afn_lambda.alphabet.copy()
     self.transitions = []
     self.transform_afn_lambda_transitions(afn_lambda.transitions)
 
@@ -95,7 +93,6 @@ class Der:
 class RegExp:
   def __init__(self, der):
     self.states = der.states.copy()
-    self.alphabet = der.alphabet.copy()
     self.transitions = der.transitions.copy()
   
   def remove_transition_if_exists(self, t):
@@ -210,11 +207,7 @@ for final_state_name in input_data[3].copy():
     if s == State(final_state_name):
       s.set_final(True)
 
-m = AfnLambda(
-  states,
-  input_data[1].copy(),
-  []
-)
+m = AfnLambda(states, [])
 
 for t in input_data[4:]:
   src = t[0]
