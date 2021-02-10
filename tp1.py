@@ -37,15 +37,21 @@ class State:
     return self.human_readable()
 
 class Transition:
-  LAMBDA = ''
+  LAMBDA = ""
+  LAMBDA_DISPLAY = "lambda"
 
   def __init__(self, src, symb, dest):
     self.src = src
     self.symb = symb
     self.dest = dest
 
+  def symb_display(self):
+    if self.symb != Transition.LAMBDA:
+      return self.symb
+    return Transition.LAMBDA_DISPLAY
+
   def human_readable(self):
-    return f'Transition({self.src}, {self.symb}, {self.dest})'
+    return f'Transition({self.src}, {self.symb_display()}, {self.dest})'
 
   def __str__(self):
     return self.human_readable()
@@ -106,6 +112,8 @@ class Der:
           self.transitions.append(Transition(src, r, dest))
 
 class RegExp:
+  EMPTY_LANGUAGE = 'empty'
+
   def __init__(self, der):
     self.der = der
     self.states = der.states.copy()
@@ -115,8 +123,17 @@ class RegExp:
     if t in self.transitions:
       self.transitions.remove(t)
 
+  def is_final_transition(self, t):
+    return t.src == self.der.new_initial_state and t.dest == self.der.new_final_state
+
+  def get_final_transition(self):
+    for t in self.transitions:
+      if self.is_final_transition(t):
+        return t
+    return None
+
   def remaining_transitions(self):
-    return [t for t in self.transitions if not (t.src == self.der.new_initial_state and t.dest == self.der.new_final_state)]
+    return [t for t in self.transitions if not self.is_final_transition(t)]
 
   def first_removable_transitions(self):
     remaining = self.remaining_transitions()
@@ -198,8 +215,11 @@ class RegExp:
         self.remove_transition_if_exists(t2)
         self.remove_transition_if_exists(t3)
 
-  def __str__(self):
-    return self.transitions[0].symb
+  def display(self):
+    t = self.get_final_transition()
+    if t:
+      return self.get_final_transition().symb_display()
+    return RegExp.EMPTY_LANGUAGE
 
 def main():
   if len(sys.argv) != 2:
@@ -212,15 +232,15 @@ def main():
   input_data = input_data.split(LINE_BREAK)
   input_data = [i.split(DELIMITER) for i in input_data]
 
-  states = [State(s) for s in input_data[0].copy()]
+  states = [State(s) for s in input_data[0]]
 
   m = AfnLambda(states, [])
 
-  for initial_state_name in input_data[2].copy():
+  for initial_state_name in input_data[2]:
     s = m.get_state_by_name(initial_state_name)
     s.set_initial(True)
 
-  for final_state_name in input_data[3].copy():
+  for final_state_name in [s for s in input_data[3] if s]:
     s = m.get_state_by_name(final_state_name)
     s.set_final(True)
 
@@ -234,7 +254,7 @@ def main():
   d = Der(m)
   r = RegExp(d)
   r.build()
-  print(r)
+  print(r.display())
 
 if __name__ == "__main__":
   main()
