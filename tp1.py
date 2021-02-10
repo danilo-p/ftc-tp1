@@ -90,11 +90,12 @@ class Der:
       for dest in self.states:
         dest_transitions_symb = [t.symb for t in state_transitions if t.dest == dest]
         if len(dest_transitions_symb):
-          self.transitions.append(Transition(src, " + ".join([symb for symb in dest_transitions_symb if symb]), dest))
+          r = " + ".join([symb for symb in dest_transitions_symb if symb])
+          if len(dest_transitions_symb) > 1:
+            r = f'({r})'
+          self.transitions.append(Transition(src, r, dest))
 
 d = Der(m)
-
-print(d.transitions)
 
 class RegExp:
   def __init__(self, der):
@@ -112,50 +113,51 @@ class RegExp:
     return [t for t in self.transitions if not (t.src == INITIAL_STATE and t.dest == FINAL_STATE)]
 
   def first_removable_transitions(self):
-    rt = self.remaining_transitions()
-    if len(rt) == 0:
+    remaining = self.remaining_transitions()
+    if len(remaining) == 0:
       return []
 
-    t1 = None # e1 - e
-    for t in rt:
+    t1s = [] # e1 - e
+    for t in remaining:
       if t.src != t.dest:
-        t1 = t
-        break
-    if not t1:
+        t1s.append(t)
+
+    if len(t1s) == 0:
       return []
 
-    e1 = t1.src
-    e = t1.dest
+    for t1 in t1s:
+      e1 = t1.src
+      e = t1.dest
 
-    t2 = None # e - e
-    for t in rt:
-      if t.src == e and t.dest == e:
-        t2 = t
-        break
-
-    t3s = [] # e - e2
-    for t in rt:
-      if t != t1 and t != t2 and t.src == e:
-        t3s.append(t)
-        break
-
-    print("@"*50)
-    print(t1)
-    print("@"*50)
-
-    result = []
-    for t3 in t3s:
-      t0 = None # e1 - e2
-      e2 = t3.dest
-
-      for t in rt:
-        if t.src == e1 and t.dest == e2:
-          t0 = t
+      t2 = None # e - e
+      for t in remaining:
+        if t.src == e and t.dest == e:
+          t2 = t
           break
 
-      result.append((t0, t1, t2, t3))
+      t3s = [] # e - e2
+      for t in remaining:
+        if t != t1 and t != t2 and t.src == e:
+          t3s.append(t)
 
-    return result
+      if len(t3s) == 0:
+        continue
+
+      result = []
+      for t3 in t3s:
+        t0 = None # e1 - e2
+        e2 = t3.dest
+
+        for t in remaining:
+          if t.src == e1 and t.dest == e2:
+            t0 = t
+            break
+
+        result.append((t0, t1, t2, t3))
+
+      return result
+
+    return []
 
   def build(self):
     while True:
@@ -164,9 +166,6 @@ class RegExp:
         return
 
       for t0, t1, t2, t3 in removable_transitions:
-        print("%"*50)
-        print(t0, t1, t2, t3)
-        print("%"*50)
         r1 = t1.symb
         r3 = t3.symb
 
@@ -193,15 +192,10 @@ class RegExp:
         self.remove_transition_if_exists(t2)
         self.remove_transition_if_exists(t3)
 
-        print("*"*50)
-        print(self.transitions)
-        print("*"*50)
+  def __str__(self):
+    return self.transitions[0].symb
+
 
 r = RegExp(d)
-print("#"*50)
 r.build()
-print("#"*50)
-
-print("&"*50)
-print(r.transitions)
-print("&"*50)
+print(r)
