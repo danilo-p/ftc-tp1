@@ -16,13 +16,28 @@ input_data = open(input_file).read()
 input_data = input_data.split(LINE_BREAK)
 input_data = [i.split(DELIMITER) for i in input_data]
 
+class Transition:
+  def __init__(self, src, symb, dest):
+    self.src = src
+    self.symb = symb
+    self.dest = dest
+
+  def human_readable(self):
+    return f'Transition({self.src}, {self.symb}, {self.dest})'
+
+  def __str__(self):
+    return self.human_readable()
+
+  def __repr__(self):
+    return self.human_readable()
+
 class AfnLambda:
   def __init__(self, states, alphabet, initial_states, final_states, transitions):
     self.states = states
     self.alphabet = alphabet
     self.initial_states = initial_states
     self.final_states = final_states
-    self.transitions = transitions
+    self.transitions = []
 
   def add_state(self, s):
     self.states.append(s)
@@ -34,7 +49,7 @@ class AfnLambda:
     self.final_states = final_states
 
   def add_transition(self, src, symb, dest):
-    self.transitions.append([src, symb, dest])
+    self.transitions.append(Transition(src, symb, dest))
 
 m = AfnLambda(
   input_data[0].copy(),
@@ -71,11 +86,11 @@ class Der:
 
   def transform_afn_lambda_transitions(self, afn_lambda_transitions):
     for src in self.states:
-      state_transitions = [t for t in afn_lambda_transitions if t[0] == src]
+      state_transitions = [t for t in afn_lambda_transitions if t.src == src]
       for dest in self.states:
-        dest_transitions_symb = [t[1] for t in state_transitions if t[2] == dest]
+        dest_transitions_symb = [t.symb for t in state_transitions if t.dest == dest]
         if len(dest_transitions_symb):
-          self.transitions.append([src, " + ".join([symb for symb in dest_transitions_symb if symb]), dest])
+          self.transitions.append(Transition(src, " + ".join([symb for symb in dest_transitions_symb if symb]), dest))
 
 d = Der(m)
 
@@ -94,7 +109,7 @@ class RegExp:
       self.transitions.remove(t)
 
   def remaining_transitions(self):
-    return [t for t in self.transitions if not (t[0] == INITIAL_STATE and t[2] == FINAL_STATE)]
+    return [t for t in self.transitions if not (t.src == INITIAL_STATE and t.dest == FINAL_STATE)]
 
   def first_removable_transitions(self):
     rt = self.remaining_transitions()
@@ -103,24 +118,24 @@ class RegExp:
 
     t1 = None # e1 - e
     for t in rt:
-      if t[0] != t[2]:
+      if t.src != t.dest:
         t1 = t
         break
     if not t1:
       return []
 
-    e1 = t1[0]
-    e = t1[2]
+    e1 = t1.src
+    e = t1.dest
 
     t2 = None # e - e
     for t in rt:
-      if t[0] == e and t[2] == e:
+      if t.src == e and t.dest == e:
         t2 = t
         break
 
     t3s = [] # e - e2
     for t in rt:
-      if t != t1 and t != t2 and t[0] == e:
+      if t != t1 and t != t2 and t.src == e:
         t3s.append(t)
         break
 
@@ -131,10 +146,10 @@ class RegExp:
     result = []
     for t3 in t3s:
       t0 = None # e1 - e2
-      e2 = t3[2]
+      e2 = t3.dest
 
       for t in rt:
-        if t[0] == e1 and t[2] == e2:
+        if t.src == e1 and t.dest == e2:
           t0 = t
           break
 
@@ -152,16 +167,16 @@ class RegExp:
         print("%"*50)
         print(t0, t1, t2, t3)
         print("%"*50)
-        r1 = t1[1]
-        r3 = t3[1]
+        r1 = t1.symb
+        r3 = t3.symb
 
         r0 = None
         if t0:
-          r0 = t0[1]
+          r0 = t0.symb
 
         r2 = None
         if t2:
-          r2 = t2[1]
+          r2 = t2.symb
 
         r = ""
         if r2:
@@ -172,7 +187,7 @@ class RegExp:
         if r0:
           r = f'({r0} + {r})'
 
-        self.transitions.append([t1[0], r, t3[2]])
+        self.transitions.append(Transition(t1.src, r, t3.dest))
         self.remove_transition_if_exists(t0)
         self.remove_transition_if_exists(t1)
         self.remove_transition_if_exists(t2)
