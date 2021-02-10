@@ -6,15 +6,40 @@ INITIAL_STATE = "__INITIAL__"
 FINAL_STATE = "__FINAL__"
 LAMBDA_TRANSITION = ''
 
-if len(sys.argv) != 2:
-  print("Usage: ./tp1 <input file>")
-  sys.exit()
+class State:
+  def __init__(self, name, initial = False, final = False):
+    self.name = name
+    self.initial = initial
+    self.final = final
 
-input_file = sys.argv[1]
+  def set_final(self, final):
+    self.final = final
 
-input_data = open(input_file).read()
-input_data = input_data.split(LINE_BREAK)
-input_data = [i.split(DELIMITER) for i in input_data]
+  def set_initial(self, initial):
+    self.initial = initial
+
+  def human_readable(self):
+    flags = ""
+
+    if self.final:
+      flags += "F"
+
+    if self.initial:
+      flags += "I"
+
+    if len(flags) == 0:
+      flags += "-"
+
+    return f'State({self.name}, {flags})'
+
+  def __eq__(self, obj):
+    return self.name == obj.name
+
+  def __str__(self):
+    return self.human_readable()
+
+  def __repr__(self):
+    return self.human_readable()
 
 class Transition:
   def __init__(self, src, symb, dest):
@@ -48,8 +73,8 @@ class AfnLambda:
   def set_final_states(self, final_states):
     self.final_states = final_states
 
-  def add_transition(self, src, symb, dest):
-    self.transitions.append(Transition(src, symb, dest))
+  def add_transition(self, t):
+    self.transitions.append(t)
 
 class Der:
   def __init__(self, afn_lambda):
@@ -84,7 +109,7 @@ class RegExp:
       self.transitions.remove(t)
 
   def remaining_transitions(self):
-    return [t for t in self.transitions if not (t.src == INITIAL_STATE and t.dest == FINAL_STATE)]
+    return [t for t in self.transitions if not (t.src == State(INITIAL_STATE) and t.dest == State(FINAL_STATE))]
 
   def first_removable_transitions(self):
     remaining = self.remaining_transitions()
@@ -169,11 +194,21 @@ class RegExp:
   def __str__(self):
     return self.transitions[0].symb
 
+if len(sys.argv) != 2:
+  print("Usage: ./tp1 <input file>")
+  sys.exit()
+
+input_file = sys.argv[1]
+
+input_data = open(input_file).read()
+input_data = input_data.split(LINE_BREAK)
+input_data = [i.split(DELIMITER) for i in input_data]
+
 m = AfnLambda(
-  input_data[0].copy(),
+  [State(s) for s in input_data[0].copy()],
   input_data[1].copy(),
-  input_data[2].copy(),
-  input_data[3].copy(),
+  [State(s) for s in input_data[2].copy()],
+  [State(s) for s in input_data[3].copy()],
   []
 )
 
@@ -182,17 +217,17 @@ for t in input_data[4:]:
   symb = t[1]
   dests = t[2:]
   for dest in dests:
-    m.add_transition(src, symb, dest)
+    m.add_transition(Transition(State(src), symb, State(dest)))
 
-m.add_state(INITIAL_STATE)
+m.add_state(State(INITIAL_STATE))
 for i in m.initial_states:
-  m.add_transition(INITIAL_STATE, LAMBDA_TRANSITION, i)
-m.set_initial_states([INITIAL_STATE])
+  m.add_transition(Transition(State(INITIAL_STATE), LAMBDA_TRANSITION, i))
+m.set_initial_states([State(INITIAL_STATE)])
 
-m.add_state(FINAL_STATE)
+m.add_state(State(FINAL_STATE))
 for f in m.final_states:
-  m.add_transition(f, LAMBDA_TRANSITION, FINAL_STATE)
-m.set_final_states([FINAL_STATE])
+  m.add_transition(Transition(f, LAMBDA_TRANSITION, State(FINAL_STATE)))
+m.set_final_states([State(FINAL_STATE)])
 
 d = Der(m)
 r = RegExp(d)
