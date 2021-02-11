@@ -195,6 +195,8 @@ class RegExp:
         break
 
       for t0, t1, t2, t3 in removable_transitions:
+        # print(t0, t1, t2, t3)
+        # print()
         r1 = t1.symb
         r3 = t3.symb
 
@@ -206,14 +208,15 @@ class RegExp:
         if t2:
           r2 = t2.symb
 
-        r = ""
+        base_r = ""
         if r2:
-          r = f'{r1}{r2}*{r3}'
+          base_r = f'{r1}({r2})*{r3}'
         else:
-          r = f'{r1}{r3}'
+          base_r = f'{r1}{r3}'
 
+        r = base_r
         if r0:
-          r = f'({r0} + {r})'
+          r = Transition.build_or_expression_for_symbols([r0, r])
 
         self.transitions.append(Transition(t1.src, r, t3.dest))
         self.remove_transition_if_exists(t0)
@@ -221,13 +224,24 @@ class RegExp:
         self.remove_transition_if_exists(t2)
         self.remove_transition_if_exists(t3)
 
-    ft = self.get_final_transitions()
-    if len(ft):
-      symbols = [t.symb for t in ft]
-      r = Transition.build_or_expression_for_symbols(symbols)
-      for t in ft:
-        self.transitions.remove(t)
-      self.transitions.append(Transition(self.der.new_initial_state, r, self.der.new_final_state))
+        transitions_targeting_e = [t for t in self.transitions if t.dest == t1.dest]
+        for t in transitions_targeting_e:
+          t.symb = Transition.build_or_expression_for_symbols([t.symb, base_r])
+          t.dest = t3.dest
+
+        for t in self.transitions:
+          twins = [twin for twin in self.transitions if t.src == twin.src and t.dest == twin.dest]
+          if len(twins) > 1:
+            r = Transition.build_or_expression_for_symbols([twin.symb for twin in twins])
+            for twin in twins:
+              self.transitions.remove(twin)
+            self.transitions.append(Transition(t.src, r, t.dest))
+
+        # print(self.transitions)
+        # print()
+        # print()
+        # print()
+
 
   def display(self):
     final_transitions = self.get_final_transitions()
@@ -268,6 +282,7 @@ def main():
   d = Der(m)
   r = RegExp(d)
   r.build()
+  # print(r.transitions)
   print(r.display())
 
 if __name__ == "__main__":
