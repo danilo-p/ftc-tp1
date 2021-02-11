@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import sys
-import uuid
 
 DELIMITER = ','
 LINE_BREAK = '\n'
