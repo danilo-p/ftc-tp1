@@ -40,6 +40,12 @@ class Transition:
   LAMBDA = ""
   LAMBDA_DISPLAY = "lambda"
 
+  def build_or_expression_for_symbols(symbols):
+    r = " + ".join([s for s in symbols if s])
+    if len(symbols) > 1:
+      r = f'({r})'
+    return r
+
   def __init__(self, src, symb, dest):
     self.src = src
     self.symb = symb
@@ -93,7 +99,7 @@ class Der:
     self.new_final_state = State(final=True)
     for f in afn_lambda.get_final_states():
       afn_lambda.add_transition(Transition(f, Transition.LAMBDA, self.new_final_state))
-      i.set_final(False)
+      f.set_final(False)
     afn_lambda.add_state(self.new_final_state)
 
     self.states = afn_lambda.states.copy()
@@ -106,9 +112,7 @@ class Der:
       for dest in self.states:
         dest_transitions_symb = [t.symb for t in state_transitions if t.dest == dest]
         if len(dest_transitions_symb):
-          r = " + ".join([symb for symb in dest_transitions_symb if symb])
-          if len(dest_transitions_symb) > 1:
-            r = f'({r})'
+          r = Transition.build_or_expression_for_symbols(dest_transitions_symb)
           self.transitions.append(Transition(src, r, dest))
 
 class RegExp:
@@ -126,11 +130,12 @@ class RegExp:
   def is_final_transition(self, t):
     return t.src == self.der.new_initial_state and t.dest == self.der.new_final_state
 
-  def get_final_transition(self):
+  def get_final_transitions(self):
+    ft = []
     for t in self.transitions:
       if self.is_final_transition(t):
-        return t
-    return None
+        ft.append(t)
+    return ft
 
   def remaining_transitions(self):
     return [t for t in self.transitions if not self.is_final_transition(t)]
@@ -186,7 +191,7 @@ class RegExp:
     while True:
       removable_transitions = self.first_removable_transitions()
       if len(removable_transitions) == 0:
-        return
+        break
 
       for t0, t1, t2, t3 in removable_transitions:
         r1 = t1.symb
@@ -215,11 +220,19 @@ class RegExp:
         self.remove_transition_if_exists(t2)
         self.remove_transition_if_exists(t3)
 
+    ft = self.get_final_transitions()
+    if len(ft):
+      symbols = [t.symb for t in ft]
+      r = Transition.build_or_expression_for_symbols(symbols)
+      for t in ft:
+        self.transitions.remove(t)
+      self.transitions.append(Transition(self.der.new_initial_state, r, self.der.new_final_state))
+
   def display(self):
-    t = self.get_final_transition()
-    if t:
-      return self.get_final_transition().symb_display()
-    return RegExp.EMPTY_LANGUAGE
+    final_transitions = self.get_final_transitions()
+    if len(final_transitions) == 0:
+      return RegExp.EMPTY_LANGUAGE
+    return final_transitions[0].symb_display()
 
 def main():
   if len(sys.argv) != 2:
