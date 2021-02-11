@@ -2,9 +2,6 @@
 
 import sys
 
-DELIMITER = ','
-LINE_BREAK = '\n'
-
 class State:
   def __init__(self, name = "", initial = False, final = False):
     self.name = name
@@ -38,8 +35,7 @@ class State:
     return self.human_readable()
 
 class Transition:
-  LAMBDA = ""
-  LAMBDA_DISPLAY = "lambda"
+  LAMBDA = "λ"
 
   def build_or_expression_for_symbols(symbols):
     r = " + ".join([s for s in symbols if s])
@@ -52,13 +48,8 @@ class Transition:
     self.symb = symb
     self.dest = dest
 
-  def symb_display(self):
-    if self.symb != Transition.LAMBDA:
-      return self.symb
-    return Transition.LAMBDA_DISPLAY
-
   def human_readable(self):
-    return f'Transition({self.src}, {self.symb_display()}, {self.dest})'
+    return f'Transition({self.src}, {self.symb}, {self.dest})'
 
   def __str__(self):
     return self.human_readable()
@@ -195,8 +186,6 @@ class RegExp:
         break
 
       for t0, t1, t2, t3 in removable_transitions:
-        # print(t0, t1, t2, t3)
-        # print()
         r1 = t1.symb
         r3 = t3.symb
 
@@ -226,7 +215,7 @@ class RegExp:
 
         transitions_targeting_e = [t for t in self.transitions if t.dest == t1.dest]
         for t in transitions_targeting_e:
-          t.symb = Transition.build_or_expression_for_symbols([t.symb, base_r])
+          t.symb = f'{t.symb}{base_r}'
           t.dest = t3.dest
 
         for t in self.transitions:
@@ -237,17 +226,11 @@ class RegExp:
               self.transitions.remove(twin)
             self.transitions.append(Transition(t.src, r, t.dest))
 
-        # print(self.transitions)
-        # print()
-        # print()
-        # print()
-
-
   def display(self):
     final_transitions = self.get_final_transitions()
     if len(final_transitions) == 0:
       return RegExp.EMPTY_LANGUAGE
-    return final_transitions[0].symb_display()
+    return final_transitions[0].symb
 
 def main():
   if len(sys.argv) != 2:
@@ -257,8 +240,8 @@ def main():
   input_file = sys.argv[1]
 
   input_data = open(input_file).read()
-  input_data = input_data.split(LINE_BREAK)
-  input_data = [i.split(DELIMITER) for i in input_data]
+  input_data = input_data.split('\n')
+  input_data = [i.split(',') for i in input_data]
 
   states = [State(s) for s in input_data[0]]
 
@@ -274,7 +257,7 @@ def main():
 
   for t in input_data[4:]:
     src = t[0]
-    symb = t[1]
+    symb = t[1] or Transition.LAMBDA
     dests = t[2:]
     for dest in dests:
       m.add_transition(Transition(m.get_state_by_name(src), symb, m.get_state_by_name(dest)))
@@ -282,7 +265,6 @@ def main():
   d = Der(m)
   r = RegExp(d)
   r.build()
-  # print(r.transitions)
   print(r.display())
 
 if __name__ == "__main__":
