@@ -108,7 +108,7 @@ class Der:
           self.transitions.append(Transition(src, r, dest))
 
 class RegExp:
-  EMPTY_LANGUAGE = 'empty'
+  EMPTY = '∅'
 
   def __init__(self, der):
     self.der = der
@@ -229,7 +229,7 @@ class RegExp:
   def display(self):
     final_transitions = self.get_final_transitions()
     if len(final_transitions) == 0:
-      return RegExp.EMPTY_LANGUAGE
+      return RegExp.EMPTY
     return final_transitions[0].symb
 
 def main():
